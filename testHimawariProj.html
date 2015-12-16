@@ -1,0 +1,86 @@
+<html>
+  <head>
+    <script src="js/jquery-2.1.4.min.js"></script>
+    <script src="js/HimawariProj.js"></script>
+    <script>
+
+
+var ctx;
+
+function drawPoint(pt) {
+    ctx.beginPath();
+    ctx.fillStyle="yellow";
+    ctx.arc(pt[0], pt[1], 2, 0, 2 * Math.PI);
+    ctx.fill();
+}
+
+function init() {
+    $('#himawariImage').load(initCanvas);
+}
+
+
+$(init);
+
+var hp;
+
+function displaySunTimes(sunTimes) {
+    if (sunTimes) {
+        return Math.round(sunTimes.sunrise * 10) / 10 + ' to ' +
+            Math.round(sunTimes.sunset * 10) / 10;
+    } else {
+        return 'Show full 24';
+    }
+}
+
+function testRectToSunTimes(hp, topLeft, bottomRight) {
+    ctx.strokeStyle='cyan';
+    ctx.strokeRect(topLeft[0], topLeft[1], bottomRight[0]-topLeft[0], bottomRight[1]-topLeft[1]);
+    var msg = '';
+    var sunTimes = hp.rectToSunTimes(new Date("January 1 2015 UTC"), topLeft, bottomRight);
+    ctx.font = '24px sans';
+    msg += 
+    ctx.fillText('Jan: ' + displaySunTimes(sunTimes), topLeft[0], bottomRight[1] + 24);
+    sunTimes = hp.rectToSunTimes(new Date("July 1 2015 UTC"), topLeft, bottomRight);
+    ctx.fillText('Jul: ' + displaySunTimes(sunTimes), topLeft[0], bottomRight[1] + 48);
+}
+
+function initCanvas() {
+    var canvas = document.getElementById("canvas");
+    ctx = canvas.getContext("2d");
+    var image = document.getElementById("himawariImage");
+    ctx.drawImage(image, 0, 0);
+
+    hp = new HimawariProj();
+
+    for (var i = 0; i < 16; i++) {
+        drawPoint(hp.pixelAtAngle(i / 16 * 2 * Math.PI));
+    }
+    drawPoint(hp.latLonToPixel([-22.413209, 128.817409]));
+    drawPoint(hp.latLonToPixel([-21.802154, 114.183185]));
+    drawPoint(hp.latLonToPixel([-10.702591, 142.530854]));
+    drawPoint(hp.latLonToPixel([31.807633, 89.079433]));
+
+    hp.testLatLon([-22.413209, 128.817409]);
+    hp.testLatLon([-21.802154, 114.183185]);
+    hp.testLatLon([-10.702591, 142.530854]);
+    hp.testLatLon([31.807633, 89.079433]);
+
+    console.log(hp.pixelToLatLon([0, 0]));
+
+    testRectToSunTimes(hp, [500, 100], [600, 200]);
+    testRectToSunTimes(hp, [100, 100], [400, 400]);
+    testRectToSunTimes(hp, [500, 20], [600, 60]);
+    testRectToSunTimes(hp, [100, 900], [200, 1000]);
+    testRectToSunTimes(hp, [300, 900], [400, 1000]);
+    testRectToSunTimes(hp, [500, 900], [600, 1000]);
+    testRectToSunTimes(hp, [700, 900], [800, 1000]);
+    testRectToSunTimes(hp, [900, 900], [1000, 1000]);
+}
+
+</script>
+  <head>
+    <body>
+        <canvas id="canvas" width=1100 height=1100 style="width:100%"></canvas>
+        <img id="himawariImage" src="20151206023000-small.png"></img>
+    </body>
+</html>

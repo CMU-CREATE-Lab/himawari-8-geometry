@@ -1,12 +1,8 @@
-<html>
-  <head>
-    <script src="js/jquery-2.1.4.min.js"></script>
-    <script>
 // The earth is approximately spherical, but is a bit wider at the equator and shorter pole-to-pole.
 // It deviates from a sphere by only about 0.33%
 
-////////////////////////////////////////////////////
-// From suncalc.js, removing Moon
+//////////////////////////////////////////
+// Incorporating suncalc.js, removing Moon
 
 /*
  (c) 2011-2015, Vladimir Agafonkin
@@ -176,61 +172,29 @@ else if (typeof module !== 'undefined') module.exports = SunCalc;
 else window.SunCalc = SunCalc;
 
 }());
-</script>
-<script>
       
 ////////////////////////
 
 function getSunRange(date, lat, lon) {
-  var times = SunCalc.getTimes(date, lat, lon);
-  if (isNaN(times.sunrise.getTime())) {
-    // No sunrise/sunset;  we must be close to a pole and always sunny or always dark
-    // Report alwaysSunny or alwaysDark based on whether the sun is above or below the horizon
-    var altitude = SunCalc.getPosition(times.solarNoon, lat, lon).altitude;
-    times[altitude > 0 ? 'alwaysSunny' : 'alwaysDark'] = true;
-  } 
-  return times;
+    if (date.getUTCHours() != 0 || date.getUTCMinutes() != 0) {
+        alert('illegal date arg to getSunRange');
+        return;
+    }
+    var times = SunCalc.getTimes(date, lat, lon);
+    
+    if (isNaN(times.sunrise.getTime())) {
+        // No sunrise/sunset;  we must be close to a pole and always sunny or always dark
+        // Report alwaysSunny or alwaysDark based on whether the sun is above or below the horizon
+        var altitude = SunCalc.getPosition(times.solarNoon, lat, lon).altitude;
+        times[altitude > 0 ? 'alwaysSunny' : 'alwaysDark'] = true;
+    } else {
+        times.sunrise = (times.sunrise.getTime() - date.getTime())/3600000;
+        times.sunset = (times.sunset.getTime() - date.getTime())/3600000;
+    }
+    return times;
 }
 
 ////////////////////////////////
-
-
-var ctx;
-
-function drawPoint(pt) {
-    ctx.beginPath();
-    ctx.fillStyle="yellow";
-    ctx.arc(pt[0], pt[1], 2, 0, 2 * Math.PI);
-    ctx.fill();
-}
-
-function initCanvas() {
-    var canvas = document.getElementById("canvas");
-    ctx = canvas.getContext("2d");
-    var image = document.getElementById("himawariImage");
-    ctx.drawImage(image, 0, 0);
-//    drawPoint([550, 550]);
-
-    var hp = new HimawariProj();
-
-    for (var i = 0; i < 16; i++) {
-        drawPoint(hp.pixelAtAngle(i / 16 * 2 * Math.PI));
-    }
-    drawPoint(hp.latLonToPixel([-22.413209, 128.817409]));
-    drawPoint(hp.latLonToPixel([-21.802154, 114.183185]));
-    drawPoint(hp.latLonToPixel([-10.702591, 142.530854]));
-    drawPoint(hp.latLonToPixel([31.807633, 89.079433]));
-
-    hp.testLatLon([-22.413209, 128.817409]);
-    hp.testLatLon([-21.802154, 114.183185]);
-    hp.testLatLon([-10.702591, 142.530854]);
-    hp.testLatLon([31.807633, 89.079433]);
-}
-
-function init() {
-    $('#himawariImage').load(initCanvas);
-}
-
 var HimawariProj = function() {
 };
 
@@ -293,7 +257,6 @@ HimawariProj.prototype.latLonToVec = function(latLon) {
 HimawariProj.prototype.testLatLon = function(latLon) {
     var pixel = this.latLonToPixel(latLon);
     var newLatLon = this.pixelToLatLon(pixel);
-    console.log(latLon + ' ... ' + newLatLon);
 }
 
 function square(x) { return x*x; }
@@ -304,6 +267,10 @@ HimawariProj.prototype.vecToLatLon = function(vec) {
     var L = [vec[0] / mag, vec[1] / mag, vec[2] / mag];
     
     var d = (L[2] * this.a) - Math.sqrt(square(L[2] * this.a) - square(this.a) + square(this.r));
+    if (isNaN(d)) {
+        return false;
+    }
+        
     // Find location on sphere
     var ecef = [L[0] * d, L[1] * d, this.a - L[2] * d];
 
@@ -320,15 +287,32 @@ HimawariProj.prototype.pixelToLatLon = function(pixel) {
     return this.vecToLatLon(this.pixelToVec(pixel));
 }
 
+HimawariProj.prototype.pixelToSunTimes = function(date, pixel) {
+    var latLon = this.pixelToLatLon(pixel);
+    if (!latLon) return false;
+    return getSunRange(date, latLon[0], latLon[1]);
+}
 
-
-
-$(init);
-
-</script>
-  <head>
-    <body>
-        <canvas id="canvas" width=1100 height=1100 style="width:100%"></canvas>
-        <img id="himawariImage" src="20151206023000-small.png"></img>
-    </body>
-</html>
+// Returns false if should show all 24 hours (e.g. always sunny, or completely outside sphere)
+// Otherwise, returns {
+HimawariProj.prototype.rectToSunTimes = function(date, topLeft, bottomRight) {
+    var samplePixels = [topLeft, [topLeft[0], bottomRight[1]], [bottomRight[0], topLeft[1]], bottomRight];
+    var ret = false;
+    for (var i = 0; i < samplePixels.length; i++) {
+        var times = this.pixelToSunTimes(date, samplePixels[i]);
+        if (times) {
+            if (times.alwaysSunny) {
+                return false;
+            }
+            if (!times.alwaysDark) {
+                if (!ret) {
+                    ret = times;
+                } else {
+                    ret.sunrise = Math.min(ret.sunrise, times.sunrise);
+                    ret.sunset = Math.max(ret.sunset, times.sunset);
+                }
+            }
+        }
+    }
+    return ret;
+}

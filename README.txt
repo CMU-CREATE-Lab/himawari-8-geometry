@@ -1,20 +1,6 @@
 // TODO:
-// pixel to lat, lon
-// off-earth pixel to lat, lon
-How to go from pixel to lat, lon
+// Do the rectangle
 
-shape of the earth
-location of the camera
-pixel in the camera converts to a ray
-
-intersect the ray with the shape of the earth
-
-
-if c is 0
-
-d = -(L dot o) +- sqrt(   (L dot o)^2 - ||o||^2 + r^2)
-
-if r is 1
 
 //////////////////////////
 
